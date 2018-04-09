@@ -1,0 +1,19 @@
+{
+  "name": "sock5s",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch-server": "node --trace-warnings -r ./dist/config ./dist/watch-dog.js ./server.js",
+    "watch-client": "node --trace-warnings -r ./dist/config ./dist/watch-dog.js ./client.js",
+    "server": "node --trace-warnings -r ./dist/config ./dist/server.js",
+    "client": "node --trace-warnings -r ./dist/config ./dist/client.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^9.4.7",
+    "typescript": "^2.8.1"
+  }
+}
