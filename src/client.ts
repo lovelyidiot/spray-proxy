@@ -19,6 +19,7 @@ const getClient = function* () {
   for (let i = 0; i < clients.length; i = (i + 1) % clients.length) {
     yield clients[i];
   }
+  ss.close();
 };
 
 const newClient = () => {
@@ -44,7 +45,14 @@ const newClient = () => {
       clients.splice(clients.indexOf(init), 1);
       init.dispatchStateToUpStream({ type: State.DESTROY });
     });
+
+    sc.setTimeout(Number.parseInt(process.env.timeout!) || 180 * 1000, () => {
+      console.log("client => timeout %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten);
+      clients.splice(clients.indexOf(init), 1);
+      init.dispatchStateToUpStream({ type: State.DESTROY });
+    });
   });
+  return sc;
 };
 
 {
@@ -78,7 +86,7 @@ ss.listen(Number.parseInt(process.env.clientPort!) || 2022,
     console.log("server", listen.family, listen.address, listen.port);
   }
 );
-ss.unref();
+
 process.on("exit", () => {
   console.log("client => exit");
 });

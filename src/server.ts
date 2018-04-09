@@ -28,6 +28,11 @@ const ss = createServer({
     console.log("server => error %s,%d %d <-> %d", socket.remoteAddress, socket.remotePort, socket.bytesRead, socket.bytesWritten, err);
     init.dispatchStateToUpStream({ type: State.DESTROY });
   });
+
+  socket.setTimeout(Number.parseInt(process.env.timeout!) || 180 * 1000, () => {
+    console.log("server => timeout %s,%d %d <-> %d", socket.remoteAddress, socket.remotePort, socket.bytesRead, socket.bytesWritten);
+    init.dispatchStateToUpStream({ type: State.DESTROY });
+  });
 });
 
 ss.listen(Number.parseInt(process.env.serverPort!) || 2222,
