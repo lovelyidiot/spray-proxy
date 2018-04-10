@@ -25,7 +25,21 @@ type TransportState = { type: State.ERROR; key?: any; value: Error }
   | { type: State.END; }
   | { type: State.CLOSE; key?: any };
 
+interface TransportParameter {
+  clientPort: number;
+  clientHost: string;
+  clientConnection: number;
+  serverPort: number;
+  serverHost: string;
+  backlog: number;
+  username: string;
+  password: string;
+  timeout: number;
+}
+
 interface TransportEnvBlock {
+  readonly param: TransportParameter;
+
   control: {
   };
 
@@ -33,7 +47,7 @@ interface TransportEnvBlock {
     read: number;
     written: number;
   };
-
+  state: "connected" | "closed" | "error" | "destroy";
   pid: number;
   src: {
     host: string;

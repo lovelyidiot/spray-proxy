@@ -7,6 +7,8 @@ import { createTransportSession } from "./api";
 import { ServerTunnelLayer } from "./layer/tunnel";
 import { SubpackageLayer } from "./layer/subpackage";
 
+import defTransportParameter from "./default-parameter";
+
 const log = console.log;
 console.log = (...args: any[]) => {
   const msg = args.shift();
@@ -16,28 +18,55 @@ console.log = (...args: any[]) => {
 const ss = createServer({
   allowHalfOpen: false,
   pauseOnConnect: false
-}, (socket: Socket) => {
-  const client = new ServerSocketLayer(socket);
+}, (sc: Socket) => {
+  const client = new ServerSocketLayer(sc);
   const service = new ServerServiceLayer();
   const subpackages = new SubpackageLayer();
   const tunnel = new ServerTunnelLayer(ServerSocks5Layer);
-  const init = createTransportSession({}, client, service, subpackages, tunnel);
+
+  const block: TransportEnvBlock = {
+    param: defTransportParameter,
+    control: {
+    },
+
+    flow: {
+      read: 0,
+      written: 0
+    },
+
+    pid: process.pid,
+    state: "connected",
+    src: {
+      host: sc.localAddress,
+      port: sc.localPort
+    },
+    dst: {
+      host: sc.remoteAddress!,
+      port: sc.remotePort!
+    },
+    time: {
+      start: new Date().getTime(),
+      end: undefined!
+    },
+  };
+
+  const init = createTransportSession({ block }, client, service, subpackages, tunnel);
   init.dispatchStateToUpStream({ type: State.INITIALIZE });
 
-  socket.on("error", (err) => {
-    console.log("server => error %s,%d %d <-> %d", socket.remoteAddress, socket.remotePort, socket.bytesRead, socket.bytesWritten, err);
+  sc.on("error", (err) => {
+    console.log("server => error %s,%d %d <-> %d", sc.remoteAddress, sc.remotePort, sc.bytesRead, sc.bytesWritten, err);
     init.dispatchStateToUpStream({ type: State.DESTROY });
   });
 
-  socket.setTimeout(Number.parseInt(process.env.timeout!) || 180 * 1000, () => {
-    console.log("server => timeout %s,%d %d <-> %d", socket.remoteAddress, socket.remotePort, socket.bytesRead, socket.bytesWritten);
+  sc.setTimeout(defTransportParameter.timeout, () => {
+    console.log("server => timeout %s,%d %d <-> %d", sc.remoteAddress, sc.remotePort, sc.bytesRead, sc.bytesWritten);
     init.dispatchStateToUpStream({ type: State.DESTROY });
   });
 });
 
-ss.listen(Number.parseInt(process.env.serverPort!) || 2222,
-  process.env.serverHost || "0.0.0.0",
-  Number.parseInt(process.env.backlog!) || 20,
+ss.listen(defTransportParameter.serverPort,
+  defTransportParameter.serverHost,
+  defTransportParameter.backlog,
   () => {
     const listen = ss.address();
     console.log("server", listen.family, listen.address, listen.port);

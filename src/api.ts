@@ -1,58 +1,113 @@
 import { LowStateLayer, HighStateLayer } from "./layer/state";
-import { ListItem } from "./base/list";
+import { ok } from "assert";
 
-class TransportContextInternal extends ListItem<TransportContextInternal> implements TransportContext {
-  public constructor(private readonly _target: TransportObject,
+class TransportContextInternal {
+  static TOKEN: symbol = Symbol();
+
+  protected _previous: TransportContextInternal = undefined!;
+  protected _next: TransportContextInternal = undefined!;
+
+  protected constructor(private readonly _target: TransportObject,
     private _block: TransportEnvBlock) {
-    super();
   }
 
-  public async dispatchDataToUpStream(data: Buffer) {
-    return await this._next._target.fetchDataFromDownStream(data);
+  protected previous(): TransportContextInternal {
+    return this._previous;
+  }
+  protected next(): TransportContextInternal {
+    return this._next;
   }
 
-  public async dispatchDataToDownStream(data: Buffer) {
-    return await this._previous._target.fetchDataFromUpStream(data);
+  protected delete(): void {
+    if (this._next) {
+      this._next._previous = this._previous;
+    }
+    if (this._previous) {
+      this._previous._next = this._next;
+    }
+
+    delete this._next;
+    delete this._previous;
   }
 
-  public async dispatchStateToUpStream(state: TransportState) {
-    return await this._next._target.fetchStateFromDownStream(state);
+  protected insertToNext(item: TransportContextInternal): void {
+    ok(item._next === undefined && item._previous === undefined);
+    item._next = this._next;
+    item._previous = this;
+
+    if (this._next)
+      this._next._previous = item;
+    this._next = item;
   }
 
-  public async dispatchStateToDownStream(state: TransportState) {
-    return await this._previous._target.fetchStateFromUpStream(state);
+  protected insertToPrevious(item: TransportContextInternal): void {
+    ok(item._next === undefined && item._previous === undefined);
+    item._previous = this._previous;
+    item._next = this;
+
+    if (this._previous)
+      this._previous._next = item;
+    this._previous = item;
   }
 
-  public attachObjectToUpStream(target: TransportObject) {
-    const newContextInternal = new TransportContextInternal(target, this._block);
-    super.insertToNext(newContextInternal);
-    target.setTransportContext(setOwnTransportContextInternal(newContextInternal));
-  }
+  static setOwnTransportContextInternal = (context: TransportContextInternal) => {
+    return TransportContextInternal.createContextProxy(context, TransportContextInternal.TOKEN);
+  };
 
-  public attachObjectToDownStream(target: TransportObject) {
-    const newContextInternal = new TransportContextInternal(target, this._block);
-    super.insertToPrevious(newContextInternal);
-    target.setTransportContext(setOwnTransportContextInternal(newContextInternal));
-  }
+  static getOwnTransportContextInternal = (context: TransportContext) => {
+    return (context as any)[TransportContextInternal.TOKEN] as TransportContextInternal;
+  };
 
-  public detachFromStream() {
-    super.delete();
-  }
+  static createContextProxy = (context: TransportContextInternal, token: symbol) => {
+    const target: TransportContext = {
+      async dispatchDataToUpStream(data: Buffer) {
+        return await context._next._target.fetchDataFromDownStream(data);
+      },
+      async dispatchDataToDownStream(data: Buffer) {
+        return await context._previous._target.fetchDataFromUpStream(data);
+      },
+      async dispatchStateToUpStream(state: TransportState) {
+        return await context._next._target.fetchStateFromDownStream(state);
+      },
+      async dispatchStateToDownStream(state: TransportState) {
+        return await context._previous._target.fetchStateFromUpStream(state);
+      },
+      attachObjectToUpStream(target: TransportObject) {
+        const newContextInternal = new TransportContextInternal(target, context._block);
+        context.insertToNext(newContextInternal);
+        target.setTransportContext(TransportContextInternal.setOwnTransportContextInternal(newContextInternal));
+      },
+      attachObjectToDownStream(target: TransportObject) {
+        const newContextInternal = new TransportContextInternal(target, context._block);
+        context.insertToPrevious(newContextInternal);
+        target.setTransportContext(TransportContextInternal.setOwnTransportContextInternal(newContextInternal));
+      },
+      detachFromStream() {
+        context.delete();
+      },
+      getTransportEnvBlock() {
+        return context._block;
+      },
+    };
+    Object.freeze(target);
+    return new Proxy(target, {
+      get: (obj, prop: string | symbol) => {
+        if (prop === token) return context;
+        return (target as any)[prop];
+      },
+    });
+  };
 
-  public getTransportEnvBlock() {
-    return this._block;
-  }
+  static createTransportSession = (param: { low?: TransportObject; high?: TransportObject; block: TransportEnvBlock }, ...objects: Array<TransportObject>) => {
+    objects = [new LowStateLayer(param.low), ...objects, new HighStateLayer(param.high)];
 
-  static createTransportSession = (attach: { low?: TransportObject; high?: TransportObject }, ...objects: Array<TransportObject>) => {
-    objects = [new LowStateLayer(attach.low), ...objects, new HighStateLayer(attach.high)];
-    const block: TransportEnvBlock = {} as any;
-    const contexts = objects.map(object => new TransportContextInternal(object, block));
+    const contexts = objects.map(object => new TransportContextInternal(object, param.block));
     for (let i = 0; i < contexts.length - 1; i++) {
       contexts[i].insertToNext(contexts[i + 1]);
     }
 
     contexts.forEach((context, index) => {
-      objects[index].setTransportContext(createContextProxy(context, SELF_TOKEN));
+      objects[index].setTransportContext(TransportContextInternal.setOwnTransportContextInternal(context));
     });
 
     return {
@@ -65,36 +120,5 @@ class TransportContextInternal extends ListItem<TransportContextInternal> implem
     };
   };
 }
-
-const createContextProxy = (context: TransportContextInternal, token: symbol) => {
-  const target: TransportContext = {
-    dispatchDataToUpStream: context.dispatchDataToUpStream.bind(context),
-    dispatchDataToDownStream: context.dispatchDataToDownStream.bind(context),
-    dispatchStateToUpStream: context.dispatchStateToUpStream.bind(context),
-    dispatchStateToDownStream: context.dispatchStateToDownStream.bind(context),
-
-    attachObjectToUpStream: context.attachObjectToUpStream.bind(context),
-    attachObjectToDownStream: context.attachObjectToDownStream.bind(context),
-    detachFromStream: context.detachFromStream.bind(context),
-
-    getTransportEnvBlock: context.getTransportEnvBlock.bind(context)
-  };
-  Object.freeze(target);
-  return new Proxy(target, {
-    get: (obj, prop: string | symbol) => {
-      if (prop === token) return context;
-      return (target as any)[prop];
-    },
-  });
-};
-
-const SELF_TOKEN = Symbol();
-
-const setOwnTransportContextInternal = (context: TransportContextInternal) => {
-  return createContextProxy(context, SELF_TOKEN);
-};
-const getOwnTransportContextInternal = (context: TransportContext) => {
-  return (context as any)[SELF_TOKEN] as TransportContextInternal;
-};
 
 export const createTransportSession = TransportContextInternal.createTransportSession;

@@ -3,6 +3,8 @@ import { createHash, createCipheriv, randomBytes, createHmac, createDecipheriv, 
 import { ServerRc4SecureLayer } from "./secure";
 import { equal } from "assert";
 
+import defTransportParameter from "../default-parameter";
+
 interface ServicePacket {
   version: number;  // d64
   date: number;     // d64
@@ -84,18 +86,18 @@ const hashValue = (password: Buffer, value: Buffer, keyLength: 16 | 20) => {
 };
 
 const createClientUserToken = () => {
-  return hashValue(Buffer.from(process.env.username as string), Buffer.from(process.env.username as string), userLength);
+  return hashValue(Buffer.from(defTransportParameter.username), Buffer.from(defTransportParameter.username), userLength);
 };
 
 const createClientUserPrivatePasswrod = (user: Buffer, keyLength: 16) => {
-  const password = hashValue(user, Buffer.from(process.env.password as string), keyLength);
+  const password = hashValue(user, Buffer.from(defTransportParameter.password), keyLength);
   return hashValue(password, user, keyLength);
 };
 
 const createServerUserPrivatePassword = (user: Buffer, keyLength: 16) => {
   /// for support multi user, the [password] can be get from db.
   /// this is only single user mode now.
-  const password = hashValue(user, Buffer.from(process.env.password as string), keyLength);
+  const password = hashValue(user, Buffer.from(defTransportParameter.password), keyLength);
   return hashValue(password, user, keyLength);
 };
 

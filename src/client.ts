@@ -6,6 +6,8 @@ import { ClientTunnelLayer } from "./layer/tunnel";
 import { ClientSocks5Layer } from "./layer/socks5";
 import { SubpackageLayer } from "./layer/subpackage";
 
+import defTransportParameter from "./default-parameter";
+
 const TyFn = <R>(fn: (...args: any[]) => R) => {
   return undefined! as R;
 };
@@ -14,7 +16,7 @@ const ClientSession = TyFn(createTransportSession);
 type Client = typeof ClientSession;
 
 const clients: Client[] = [];
-const clientMaxConnection = Number.parseInt(process.env.clientConnection!) || 3;
+const clientMaxConnection = defTransportParameter.clientConnection;
 const getClient = function* () {
   for (let i = 0; i < clients.length; i = (i + 1) % clients.length) {
     yield clients[i];
@@ -23,13 +25,39 @@ const getClient = function* () {
 };
 
 const newClient = () => {
-  const sc = createConnection(Number.parseInt(process.env.serverPort!) || 2022, process.env.serverHost, () => {
+  const sc = createConnection(defTransportParameter.serverPort, defTransportParameter.serverHost, () => {
     const client = new ClientSocketLayer(sc);
     const service = new ClientServiceLayer();
     const subpackages = new SubpackageLayer();
     const tunnel = new ClientTunnelLayer();
 
-    const init = createTransportSession({}, client, service, subpackages, tunnel);
+    const block: TransportEnvBlock = {
+      param: defTransportParameter,
+      control: {
+      },
+
+      flow: {
+        read: 0,
+        written: 0
+      },
+
+      pid: process.pid,
+      state: "connected",
+      src: {
+        host: sc.localAddress,
+        port: sc.localPort
+      },
+      dst: {
+        host: sc.remoteAddress!,
+        port: sc.remotePort!
+      },
+      time: {
+        start: new Date().getTime(),
+        end: undefined!
+      },
+    };
+
+    const init = createTransportSession({ block }, client, service, subpackages, tunnel);
     clients.push(init);
     init.dispatchStateToUpStream({ type: State.INITIALIZE });
 
@@ -43,10 +71,10 @@ const newClient = () => {
     sc.on("close", (he) => {
       he || console.log("client => closed %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten);
       clients.splice(clients.indexOf(init), 1);
-      init.dispatchStateToUpStream({ type: State.DESTROY });
+      he || init.dispatchStateToUpStream({ type: State.DESTROY });
     });
 
-    sc.setTimeout(Number.parseInt(process.env.timeout!) || 180 * 1000, () => {
+    sc.setTimeout(defTransportParameter.timeout, () => {
       console.log("client => timeout %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten);
       clients.splice(clients.indexOf(init), 1);
       init.dispatchStateToUpStream({ type: State.DESTROY });
@@ -57,8 +85,8 @@ const newClient = () => {
 
 {
   console.log("client => create connect to server %s,%d",
-    process.env.serverHost,
-    Number.parseInt(process.env.serverPort!) || 2022);
+    defTransportParameter.serverHost,
+    defTransportParameter.serverPort);
   for (let i = 0; i < clientMaxConnection; i++) {
     newClient();
   }
@@ -78,9 +106,9 @@ const ss = createServer({
   });
 });
 
-ss.listen(Number.parseInt(process.env.clientPort!) || 2022,
-  process.env.clientHost || "0.0.0.0",
-  Number.parseInt(process.env.backlog!) || 20,
+ss.listen(defTransportParameter.clientPort,
+  defTransportParameter.clientHost,
+  defTransportParameter.backlog,
   () => {
     const listen = ss.address();
     console.log("server", listen.family, listen.address, listen.port);

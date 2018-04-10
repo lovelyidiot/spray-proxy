@@ -57,7 +57,7 @@ export class ServerTunnelLayer extends BaseTransportObject implements TransportO
       this._object.set(index, indexer);
       const newObject = new this._ctor();
 
-      const init = createTransportSession({ low: this }, indexer, newObject);
+      const init = createTransportSession({ low: this, block: this._context.getTransportEnvBlock() }, indexer, newObject);
       await init.dispatchStateToUpStream({ type: State.INITIALIZE });
       return await indexer.fetchDataFromDownStream(data);
     }
@@ -130,7 +130,7 @@ export class ClientTunnelLayer extends BaseTransportObject implements TransportO
       const indexer = new TunnelIndexLayer(value);
       this._object.set(index, indexer);
 
-      const init = createTransportSession({ low: this }, indexer, state.object);
+      const init = createTransportSession({ low: this, block: this._context.getTransportEnvBlock() }, indexer, state.object);
       return await init.dispatchStateToUpStream({ type: State.INITIALIZE });
     } else if (state.type === State.CLOSE || state.type === State.ERROR) {
       const index = (state.key as Buffer).readUIntBE(0, TUNNEL_PREFIX_LENGTH);
