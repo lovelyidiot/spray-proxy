@@ -2,10 +2,9 @@ import { LowStateLayer, HighStateLayer } from "./layer/state";
 import { ListItem } from "./base/list";
 
 class TransportContextInternal extends ListItem<TransportContextInternal> implements TransportContext {
-  private _target: TransportObject = undefined!;
-  public constructor(target: TransportObject) {
+  public constructor(private readonly _target: TransportObject,
+    private _block: TransportEnvBlock) {
     super();
-    this._target = target;
   }
 
   public async dispatchDataToUpStream(data: Buffer) {
@@ -25,25 +24,29 @@ class TransportContextInternal extends ListItem<TransportContextInternal> implem
   }
 
   public attachObjectToUpStream(target: TransportObject) {
-    const newContextInternal = new TransportContextInternal(target);
+    const newContextInternal = new TransportContextInternal(target, this._block);
     super.insertToNext(newContextInternal);
     target.setTransportContext(setOwnTransportContextInternal(newContextInternal));
   }
 
   public attachObjectToDownStream(target: TransportObject) {
-    const newContextInternal = new TransportContextInternal(target);
+    const newContextInternal = new TransportContextInternal(target, this._block);
     super.insertToPrevious(newContextInternal);
     target.setTransportContext(setOwnTransportContextInternal(newContextInternal));
   }
 
-  public detachSelfFromStream() {
+  public detachFromStream() {
     super.delete();
+  }
+
+  public getTransportEnvBlock() {
+    return this._block;
   }
 
   static createTransportSession = (attach: { low?: TransportObject; high?: TransportObject }, ...objects: Array<TransportObject>) => {
     objects = [new LowStateLayer(attach.low), ...objects, new HighStateLayer(attach.high)];
-
-    const contexts = objects.map(object => new TransportContextInternal(object));
+    const block: TransportEnvBlock = {} as any;
+    const contexts = objects.map(object => new TransportContextInternal(object, block));
     for (let i = 0; i < contexts.length - 1; i++) {
       contexts[i].insertToNext(contexts[i + 1]);
     }
@@ -72,7 +75,9 @@ const createContextProxy = (context: TransportContextInternal, token: symbol) =>
 
     attachObjectToUpStream: context.attachObjectToUpStream.bind(context),
     attachObjectToDownStream: context.attachObjectToDownStream.bind(context),
-    detachSelfFromStream: context.detachSelfFromStream.bind(context),
+    detachFromStream: context.detachFromStream.bind(context),
+
+    getTransportEnvBlock: context.getTransportEnvBlock.bind(context)
   };
   Object.freeze(target);
   return new Proxy(target, {

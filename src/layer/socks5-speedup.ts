@@ -14,7 +14,7 @@ export class ServerSocks5SpeedUpLayer extends BaseTransportObject implements Tra
         for (let buff = this._cache.shift(); buff !== undefined; buff = this._cache.shift()) {
           await super.dispatchDataToUpStream(buff);
         }
-        this._context.detachSelfFromStream();
+        this._context.detachFromStream();
       });
 
       return;
@@ -72,7 +72,7 @@ export class ClientSocks5SpeedUpLayer extends BaseTransportObject implements Tra
       this._packet++;
       await super.dispatchDataToDownStream(this._cache);
       await super.dispatchDataToDownStream(data);
-      this._context.detachSelfFromStream();
+      this._context.detachFromStream();
       return;
     }
 

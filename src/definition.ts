@@ -25,15 +25,43 @@ type TransportState = { type: State.ERROR; key?: any; value: Error }
   | { type: State.END; }
   | { type: State.CLOSE; key?: any };
 
+interface TransportEnvBlock {
+  control: {
+  };
+
+  flow: {
+    read: number;
+    written: number;
+  };
+
+  pid: number;
+  src: {
+    host: string;
+    port: number;
+  };
+
+  dst: {
+    host: string;
+    port: number;
+  };
+
+  time: {
+    start: number;
+    end: number;
+  };
+}
+
 interface TransportContext {
   dispatchDataToUpStream: (data: Buffer) => Promise<void>;
   dispatchDataToDownStream: (data: Buffer) => Promise<void>;
   dispatchStateToUpStream: (state: TransportState) => Promise<void>;
   dispatchStateToDownStream: (state: TransportState) => Promise<void>;
 
-  attachObjectToUpStream(target: TransportObject): void,
-  attachObjectToDownStream(target: TransportObject): void,
-  detachSelfFromStream(): void,
+  attachObjectToUpStream(target: TransportObject): void;
+  attachObjectToDownStream(target: TransportObject): void;
+  detachFromStream(): void;
+
+  getTransportEnvBlock(): TransportEnvBlock;
 }
 
 interface TransportObject {

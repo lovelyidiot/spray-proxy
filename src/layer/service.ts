@@ -180,7 +180,7 @@ export class ServerServiceLayer extends BaseTransportObject implements Transport
     {
       const secure = new ServerRc4SecureLayer(this._secure.enp, this._secure.dep);
       this._context.attachObjectToUpStream(secure);
-      this._context.detachSelfFromStream();
+      this._context.detachFromStream();
     }
     equal(data.length, length);
     return;
@@ -257,7 +257,7 @@ export class ClientServiceLayer extends BaseTransportObject implements Transport
 
     const secure = new ServerRc4SecureLayer(this._secure.enp, this._secure.dep);
     this._context.attachObjectToUpStream(secure);
-    this._context.detachSelfFromStream();
+    this._context.detachFromStream();
     equal(data.length, length);
     return await secure.fetchStateFromDownStream({ type: State.INITIALIZE_OK });
   }
