@@ -21,7 +21,6 @@ const getClient = function* () {
   for (let i = 0; i < clients.length; i = (i + 1) % clients.length) {
     yield clients[i];
   }
-  ss.close();
 };
 
 const newClient = () => {
@@ -69,15 +68,15 @@ const newClient = () => {
     });
 
     sc.on("close", (he) => {
-      he || console.log("client => closed %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten);
-      clients.splice(clients.indexOf(init), 1);
-      he || init.dispatchStateToUpStream({ type: State.DESTROY });
+      if (!he) {
+        console.log("client => closed %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten);
+        clients.splice(clients.indexOf(init), 1);
+      }
     });
 
     sc.setTimeout(defTransportParameter.timeout, () => {
       console.log("client => timeout %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten);
-      clients.splice(clients.indexOf(init), 1);
-      init.dispatchStateToUpStream({ type: State.DESTROY });
+      init.dispatchStateToUpStream({ type: State.END });
     });
   });
   return sc;
@@ -98,12 +97,16 @@ const ss = createServer({
   pauseOnConnect: false
 }, (socket: Socket) => {
   const tunnel = init.next();
-  tunnel.done || tunnel.value.dispatchStateToDownStream({
-    type: State.NEW_CONNECTION_OBJECT_FROM_UPSTREAM,
-    ip: socket.remoteAddress!,
-    port: socket.remotePort!,
-    object: new ClientSocks5Layer(socket)
-  });
+  if (tunnel.done) {
+    socket.destroy();
+  } else {
+    tunnel.value.dispatchStateToDownStream({
+      type: State.NEW_CONNECTION_OBJECT_FROM_UPSTREAM,
+      ip: socket.remoteAddress!,
+      port: socket.remotePort!,
+      object: new ClientSocks5Layer(socket)
+    });
+  }
 });
 
 ss.listen(defTransportParameter.clientPort,
@@ -114,7 +117,7 @@ ss.listen(defTransportParameter.clientPort,
     console.log("server", listen.family, listen.address, listen.port);
   }
 );
-
+ss.unref();
 process.on("exit", () => {
   console.log("client => exit");
 });

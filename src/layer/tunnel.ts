@@ -86,6 +86,7 @@ export class ServerTunnelLayer extends BaseTransportObject implements TransportO
           this._object.set(index, null);
           obj.fetchStateFromDownStream(state);
         }
+        this._object.delete(index);
       });
     }
     return await super.dispatchStateToUpStream(state);
@@ -152,6 +153,7 @@ export class ClientTunnelLayer extends BaseTransportObject implements TransportO
           this._object.set(index, null);
           obj.fetchStateFromDownStream(state);
         }
+        this._object.delete(index);
       });
     }
     return await super.dispatchStateToUpStream(state);

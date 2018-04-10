@@ -131,7 +131,7 @@ export class ServerServiceLayer extends BaseTransportObject implements Transport
     back.user = packet.user;
     {
       const now = (new Date()).getTime();
-      if (Math.abs(packet.date - now) > 60 * 1000) {
+      if (Math.abs(packet.date - now) > 15 * 1000) {
         return await super.dispatchStateToDownStream({ type: State.ERROR, value: new Error("time conflict") });
       }
     }

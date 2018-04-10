@@ -60,7 +60,7 @@ const ss = createServer({
 
   sc.setTimeout(defTransportParameter.timeout, () => {
     console.log("server => timeout %s,%d %d <-> %d", sc.remoteAddress, sc.remotePort, sc.bytesRead, sc.bytesWritten);
-    init.dispatchStateToUpStream({ type: State.DESTROY });
+    init.dispatchStateToUpStream({ type: State.END });
   });
 });
 
