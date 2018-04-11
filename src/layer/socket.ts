@@ -11,10 +11,14 @@ export class RawSocketLayer extends BaseTransportObject implements TransportObje
   }
 
   public async fetchDataFromUpStream(data: Buffer) {
-    this._socket.destroyed || this._socket.write(data);
+    if (!this._socket.destroyed) {
+      this._context.getTransportEnvBlock().flow.written += data.length;
+      this._socket.write(data);
+    }
   }
 
   public async fetchDataFromDownStream(data: Buffer) {
+    this._context.getTransportEnvBlock().flow.read += data.length;
     return await super.dispatchDataToUpStream(data);
   }
 

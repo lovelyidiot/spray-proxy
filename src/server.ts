@@ -54,12 +54,16 @@ const ss = createServer({
   init.dispatchStateToUpStream({ type: State.INITIALIZE });
 
   sc.on("error", (err) => {
-    console.log("server => error %s,%d %d <-> %d", sc.remoteAddress, sc.remotePort, sc.bytesRead, sc.bytesWritten, err);
+    console.log("server => error %s,%d %d <-> %d", block.dst.host, block.dst.port, block.flow.read, block.flow.written, err);
     init.dispatchStateToUpStream({ type: State.DESTROY });
   });
 
+  sc.on("close", (he) => {
+    he || console.log("server => closed %s,%d %d <-> %d", block.dst.host, block.dst.port, block.flow.read, block.flow.written);
+  });
+
   sc.setTimeout(defTransportParameter.timeout, () => {
-    console.log("server => timeout %s,%d %d <-> %d", sc.remoteAddress, sc.remotePort, sc.bytesRead, sc.bytesWritten);
+    console.log("server => timeout %s,%d %d <-> %d", block.dst.host, block.dst.port, block.flow.read, block.flow.written);
     init.dispatchStateToUpStream({ type: State.END });
   });
 });

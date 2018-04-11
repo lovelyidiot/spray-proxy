@@ -122,16 +122,16 @@ export class ClientTunnelLayer extends BaseTransportObject implements TransportO
     if (state.type === State.NEW_CONNECTION_OBJECT_FROM_UPSTREAM) {
       const value = Buffer.alloc(TUNNEL_PREFIX_LENGTH);
       {
-        state.ip.split(".").forEach((val, index) => {
+        state.block.dst.host.split(".").forEach((val, index) => {
           value.writeUInt8(Number.parseInt(val), index);
         });
-        value.writeUInt16BE(state.port, 4);
+        value.writeUInt16BE(state.block.dst.port, 4);
       }
       const index = value.readUIntBE(0, TUNNEL_PREFIX_LENGTH);
       const indexer = new TunnelIndexLayer(value);
       this._object.set(index, indexer);
 
-      const init = createTransportSession({ low: this, block: this._context.getTransportEnvBlock() }, indexer, state.object);
+      const init = createTransportSession({ low: this, block: state.block }, indexer, state.object);
       return await init.dispatchStateToUpStream({ type: State.INITIALIZE });
     } else if (state.type === State.CLOSE || state.type === State.ERROR) {
       const index = (state.key as Buffer).readUIntBE(0, TUNNEL_PREFIX_LENGTH);

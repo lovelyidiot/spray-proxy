@@ -49,10 +49,13 @@ export class ServerSocks5Layer extends BaseTransportObject implements TransportO
   private _event: EventEmitter = new EventEmitter();
 
   public async fetchDataFromUpStream(data: Buffer) {
+    this._context.getTransportEnvBlock().flow.read += data.length;
     return await super.dispatchDataToDownStream(data);
   }
 
   public async fetchDataFromDownStream(data: Buffer) {
+    this._context.getTransportEnvBlock().flow.written += data.length;
+
     if (this._packet === 0) {
       this._packet++;
       try {
@@ -94,6 +97,7 @@ export class ServerSocks5Layer extends BaseTransportObject implements TransportO
         });
 
         this.fetchDataFromDownStream = async (data: Buffer) => {
+          this._context.getTransportEnvBlock().flow.written += data.length;
           client.write(data);
         };
 

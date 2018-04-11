@@ -21,7 +21,7 @@ type TransportState = { type: State.ERROR; key?: any; value: Error }
   | { type: State.DESTROY }
   | { type: State.INITIALIZE }
   | { type: State.INITIALIZE_OK }
-  | { type: State.NEW_CONNECTION_OBJECT_FROM_UPSTREAM; ip: string; port: number; object: TransportObject; }
+  | { type: State.NEW_CONNECTION_OBJECT_FROM_UPSTREAM; block: TransportEnvBlock; object: TransportObject; }
   | { type: State.END; }
   | { type: State.CLOSE; key?: any };
 

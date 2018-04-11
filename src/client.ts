@@ -61,7 +61,7 @@ const newClient = () => {
     init.dispatchStateToUpStream({ type: State.INITIALIZE });
 
     sc.on("error", (err) => {
-      console.log("client => error %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten, err);
+      console.log("client => error %s,%d %d <-> %d", block.src.host, block.src.port, block.flow.read, block.flow.written, err);
       newClient();
       clients.splice(clients.indexOf(init), 1);
       init.dispatchStateToUpStream({ type: State.DESTROY });
@@ -69,13 +69,13 @@ const newClient = () => {
 
     sc.on("close", (he) => {
       if (!he) {
-        console.log("client => closed %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten);
+        console.log("client => closed %s,%d %d <-> %d", block.src.host, block.src.port, block.flow.read, block.flow.written);
         clients.splice(clients.indexOf(init), 1);
       }
     });
 
     sc.setTimeout(defTransportParameter.timeout, () => {
-      console.log("client => timeout %s,%d %d <-> %d", sc.localAddress, sc.localPort, sc.bytesRead, sc.bytesWritten);
+      console.log("client => timeout %s,%d %d <-> %d", block.src.host, block.src.port, block.flow.read, block.flow.written);
       init.dispatchStateToUpStream({ type: State.END });
     });
   });
@@ -100,10 +100,35 @@ const ss = createServer({
   if (tunnel.done) {
     socket.destroy();
   } else {
+    const block: TransportEnvBlock = {
+      param: defTransportParameter,
+      control: {
+      },
+
+      flow: {
+        read: 0,
+        written: 0
+      },
+
+      pid: process.pid,
+      state: "connected",
+      src: {
+        host: socket.localAddress,
+        port: socket.localPort
+      },
+      dst: {
+        host: socket.remoteAddress!,
+        port: socket.remotePort!
+      },
+      time: {
+        start: new Date().getTime(),
+        end: undefined!
+      },
+    };
+
     tunnel.value.dispatchStateToDownStream({
       type: State.NEW_CONNECTION_OBJECT_FROM_UPSTREAM,
-      ip: socket.remoteAddress!,
-      port: socket.remotePort!,
+      block,
       object: new ClientSocks5Layer(socket)
     });
   }
