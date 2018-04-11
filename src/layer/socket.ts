@@ -32,6 +32,8 @@ export class RawSocketLayer extends BaseTransportObject implements TransportObje
         this.fetchDataFromDownStream(data);
       });
       this._socket.resume();
+    } else if (state.type === State.END) {
+      this._socket.end();
     } else if (state.type === State.DESTROY) {
       this._socket.removeAllListeners();
       this._socket.destroy();
