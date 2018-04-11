@@ -17,7 +17,7 @@ console.log = (...args: any[]) => {
 
 const ss = createServer({
   allowHalfOpen: false,
-  pauseOnConnect: false
+  pauseOnConnect: true
 }, (sc: Socket) => {
   const client = new ServerSocketLayer(sc);
   const service = new ServerServiceLayer();

@@ -7,7 +7,6 @@ export class RawSocketLayer extends BaseTransportObject implements TransportObje
     super();
     this._socket = socket;
     this._socket.setNoDelay(true);
-    this._socket.pause();
   }
 
   public async fetchDataFromUpStream(data: Buffer) {

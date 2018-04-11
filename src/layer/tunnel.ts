@@ -88,6 +88,12 @@ export class ServerTunnelLayer extends BaseTransportObject implements TransportO
         }
         this._object.delete(index);
       });
+    } else if (state.type === State.END) {
+      this._object.forEach((obj, index) => {
+        if (obj) {
+          obj.fetchStateFromDownStream(state);
+        }
+      });
     }
     return await super.dispatchStateToUpStream(state);
   }
@@ -154,6 +160,12 @@ export class ClientTunnelLayer extends BaseTransportObject implements TransportO
           obj.fetchStateFromDownStream(state);
         }
         this._object.delete(index);
+      });
+    } else if (state.type === State.END) {
+      this._object.forEach((obj, index) => {
+        if (obj) {
+          obj.fetchStateFromDownStream(state);
+        }
       });
     }
     return await super.dispatchStateToUpStream(state);

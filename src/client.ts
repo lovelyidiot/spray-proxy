@@ -94,7 +94,7 @@ const newClient = () => {
 const init = getClient();
 const ss = createServer({
   allowHalfOpen: false,
-  pauseOnConnect: false
+  pauseOnConnect: true
 }, (socket: Socket) => {
   const tunnel = init.next();
   if (tunnel.done) {

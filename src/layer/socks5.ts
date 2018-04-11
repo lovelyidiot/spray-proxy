@@ -140,7 +140,6 @@ export class ClientSocks5Layer extends BaseTransportObject implements TransportO
     super();
     this._socket = socket;
     this._socket.setNoDelay(true);
-    this._socket.pause();
     console.log("client => accepted connect %s,%d", this._socket.remoteAddress, this._socket.remotePort);
   }
 
