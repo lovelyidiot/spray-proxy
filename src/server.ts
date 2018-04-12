@@ -50,21 +50,28 @@ const ss = createServer({
     },
   };
 
-  const init = createTransportSession({ block }, client, service, subpackages, tunnel);
-  init.dispatchStateToUpStream({ type: State.INITIALIZE });
+  const session = createTransportSession({ block }, client, service, subpackages, tunnel);
+  session.dispatchStateToUpStream({ type: State.INITIALIZE });
 
   sc.on("error", (err) => {
     console.log("server => error %s,%d %d <-> %d", block.dst.host, block.dst.port, block.flow.read, block.flow.written, err);
-    init.dispatchStateToUpStream({ type: State.DESTROY });
+    session.dispatchStateToUpStream({ type: State.DESTROY });
   });
 
   sc.on("close", (he) => {
     he || console.log("server => closed %s,%d %d <-> %d", block.dst.host, block.dst.port, block.flow.read, block.flow.written);
   });
 
+  const end = () => {
+    session.dispatchStateToUpStream({ type: State.END });
+  };
+
+  sc.once("end", end);
+
   sc.setTimeout(defTransportParameter.timeout, () => {
     console.log("server => timeout %s,%d %d <-> %d", block.dst.host, block.dst.port, block.flow.read, block.flow.written);
-    init.dispatchStateToUpStream({ type: State.END });
+    sc.removeListener("end", end);
+    session.dispatchStateToUpStream({ type: State.END });
   });
 });
 
