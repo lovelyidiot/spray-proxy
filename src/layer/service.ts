@@ -183,9 +183,9 @@ export class ServerServiceLayer extends BaseTransportObject implements Transport
       const secure = new ServerRc4SecureLayer(this._secure.enp, this._secure.dep);
       this._context.attachObjectToUpStream(secure);
       this._context.detachFromStream();
+      await secure.fetchStateFromDownStream({ type: State.INITIALIZE });
     }
     equal(data.length, length);
-    return;
   }
 
   public async fetchStateFromUpStream(state: TransportState) {
@@ -193,6 +193,9 @@ export class ServerServiceLayer extends BaseTransportObject implements Transport
   }
 
   public async fetchStateFromDownStream(state: TransportState) {
+    if (state.type === State.INITIALIZE) {
+      return;
+    }
     return await super.dispatchStateToUpStream(state);
   }
 }
@@ -261,7 +264,7 @@ export class ClientServiceLayer extends BaseTransportObject implements Transport
     this._context.attachObjectToUpStream(secure);
     this._context.detachFromStream();
     equal(data.length, length);
-    return await secure.fetchStateFromDownStream({ type: State.INITIALIZE_OK });
+    return await secure.fetchStateFromDownStream({ type: State.INITIALIZE });
   }
 
   public async fetchStateFromUpStream(state: TransportState) {
@@ -269,7 +272,7 @@ export class ClientServiceLayer extends BaseTransportObject implements Transport
   }
 
   public async fetchStateFromDownStream(state: TransportState) {
-    if (state.type === State.INITIALIZE_OK) {
+    if (state.type === State.INITIALIZE) {
       const pubkey = this._ecdh.generateKeys();
 
       const packet: ServicePacket = {

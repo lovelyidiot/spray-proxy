@@ -74,6 +74,8 @@ export class ServerTunnelLayer extends BaseTransportObject implements TransportO
         return await this.fetchDataFromUpStream(state.key);
       }
       return;
+    } else if ((state as any).key !== undefined) {
+      return;
     }
 
     return await super.dispatchStateToDownStream(state);
@@ -137,8 +139,8 @@ export class ClientTunnelLayer extends BaseTransportObject implements TransportO
       const indexer = new TunnelIndexLayer(value);
       this._object.set(index, indexer);
 
-      const init = createTransportSession({ low: this, block: state.block }, indexer, state.object);
-      return await init.dispatchStateToUpStream({ type: State.INITIALIZE });
+      const session = createTransportSession({ low: this, block: state.block }, indexer, state.object);
+      return await session.dispatchStateToUpStream({ type: State.INITIALIZE });
     } else if (state.type === State.CLOSE || state.type === State.ERROR) {
       const index = (state.key as Buffer).readUIntBE(0, TUNNEL_PREFIX_LENGTH);
       const object = this._object.get(index);
@@ -147,6 +149,8 @@ export class ClientTunnelLayer extends BaseTransportObject implements TransportO
       if (object) {
         return this.fetchDataFromUpStream(state.key);
       }
+      return;
+    } else if ((state as any).key !== undefined) {
       return;
     }
     return await super.dispatchStateToDownStream(state);

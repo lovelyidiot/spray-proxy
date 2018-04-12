@@ -29,10 +29,6 @@ export class LowStateLayer extends BaseTransportObject implements TransportObjec
   }
 
   public async fetchStateFromDownStream(state: TransportState) {
-    if (state.type === State.INITIALIZE) {
-      await super.dispatchStateToUpStream(state);
-      return await super.dispatchStateToUpStream({ type: State.INITIALIZE_OK });
-    }
     return await super.dispatchStateToUpStream(state);
   }
 }
@@ -62,6 +58,10 @@ export class HighStateLayer extends BaseTransportObject implements TransportObje
   public async fetchStateFromDownStream(state: TransportState) {
     if (this._proxy) {
       return await this._proxy.fetchStateFromDownStream(state);
+    }
+
+    if (state.type === State.INITIALIZE) {
+      await this.fetchStateFromUpStream({ type: State.INITIALIZE_COMPLETED });
     }
   }
 }

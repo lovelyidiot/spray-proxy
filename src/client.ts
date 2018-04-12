@@ -24,9 +24,9 @@ const createClientSessionFactory = (clientMaxConnection: number) => {
     }
   })(clientSessions);
 
-  const queue: Array<(session?: ClientSession) => void> = [];
+  const queue: Array<(session?: ClientSession) => Promise<void>> = [];
   let nowConnecting = 0;
-  return (callback: (session?: ClientSession) => void) => {
+  return (callback: (session?: ClientSession) => Promise<void>) => {
     const client = getClient.next();
     if (client.value !== undefined) {
       callback(client.value);
@@ -46,8 +46,6 @@ const createClientSessionFactory = (clientMaxConnection: number) => {
         }
       };
       const sc = createConnection(defTransportParameter.serverPort, defTransportParameter.serverHost, () => {
-        sc.removeListener("error", error);
-
         const client = new ClientSocketLayer(sc);
         const service = new ClientServiceLayer();
         const subpackages = new SubpackageLayer();
@@ -79,7 +77,27 @@ const createClientSessionFactory = (clientMaxConnection: number) => {
           },
         };
         console.log("client => connect %s,%d", block.src.host, block.src.port);
-        const session = createTransportSession({ block }, client, service, subpackages, tunnel);
+
+        const low: TransportObject = {} as any;
+
+        const session = createTransportSession({ block, low }, client, service, subpackages, tunnel);
+        low.fetchStateFromUpStream = async (state: TransportState) => {
+          if (state.type === State.INITIALIZE_COMPLETED) {
+            sc.removeListener("error", error);
+
+            nowConnecting--;
+            if (!sc.destroyed) {
+              clientSessions.push(session);
+              queue.forEach(callback => {
+                callback(session);
+              });
+              queue.splice(0);
+            }
+            return;
+          }
+          throw new Error("not impl");
+        }
+
         sc.on("error", (err) => {
           console.log("client => error %s,%d %d <-> %d", block.src.host, block.src.port, block.flow.read, block.flow.written, err);
           clientSessions.splice(clientSessions.indexOf(session), 1);
@@ -97,16 +115,7 @@ const createClientSessionFactory = (clientMaxConnection: number) => {
           session.dispatchStateToUpStream({ type: State.END });
         });
 
-        session.dispatchStateToUpStream({ type: State.INITIALIZE }).then(() => {
-          nowConnecting--;
-          if (!sc.destroyed) {
-            clientSessions.push(session);
-            queue.forEach(callback => {
-              callback(session);
-            });
-            queue.splice(0);
-          }
-        });
+        session.dispatchStateToUpStream({ type: State.INITIALIZE });
       });
       sc.on("error", error);
       nowConnecting++;
@@ -119,7 +128,7 @@ const ss = createServer({
   allowHalfOpen: false,
   pauseOnConnect: true
 }, (socket: Socket) => {
-  getClientSession((session?: ClientSession) => {
+  getClientSession(async (session?: ClientSession) => {
     if (socket.destroyed) {
       return;
     }

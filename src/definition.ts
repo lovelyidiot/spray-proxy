@@ -4,7 +4,7 @@ const enum State {
   DESTROY,
 
   INITIALIZE,
-  INITIALIZE_OK,
+  INITIALIZE_COMPLETED,
 
   // QUERY_IP_AND_PORT,
   // REPLY_IP_AND_PORT,
@@ -20,7 +20,7 @@ const enum State {
 type TransportState = { type: State.ERROR; key?: any; value: Error }
   | { type: State.DESTROY }
   | { type: State.INITIALIZE }
-  | { type: State.INITIALIZE_OK }
+  | { type: State.INITIALIZE_COMPLETED; key?: any; }
   | { type: State.NEW_CONNECTION_OBJECT_FROM_UPSTREAM; block: TransportEnvBlock; object: TransportObject; }
   | { type: State.END; }
   | { type: State.CLOSE; key?: any };
@@ -87,15 +87,4 @@ interface TransportObject {
   fetchStateFromUpStream: (state: TransportState) => Promise<void>;
   fetchStateFromDownStream: (state: TransportState) => Promise<void>;
 }
-
-
-
-
-
-
-
-
-
-
-
 

@@ -76,7 +76,7 @@ export class ServerSocks5Layer extends BaseTransportObject implements TransportO
       console.log("server => connecting to %s,%d", host.address, host.port);
       const client = createConnection(host.port, host.address, () => {
         console.log("server => connected with %s,%d", host.address, host.port);
-        super.dispatchDataToDownStream(host.reply);
+        this.fetchDataFromUpStream(host.reply);
         client.removeAllListeners("error");
 
         client.on("data", (buff: Buffer) => {
@@ -84,7 +84,7 @@ export class ServerSocks5Layer extends BaseTransportObject implements TransportO
           // super.dispatchDataToDownStream(buff).then(() => {
           //   client.resume();
           // });
-          super.dispatchDataToDownStream(buff);
+          this.fetchDataFromUpStream(buff);
         });
 
         client.on("close", he => {
@@ -144,22 +144,17 @@ export class ClientSocks5Layer extends BaseTransportObject implements TransportO
   }
 
   public async fetchDataFromUpStream(data: Buffer) {
+    this._context.getTransportEnvBlock().flow.read += data.length;
     return await super.dispatchDataToDownStream(data);
   }
 
   public async fetchDataFromDownStream(data: Buffer) {
+    this._context.getTransportEnvBlock().flow.written += data.length;
     this._socket.write(data);
   }
 
   public async fetchStateFromUpStream(state: TransportState) {
-    return await super.dispatchStateToDownStream(state);
-  }
-
-  public async fetchStateFromDownStream(state: TransportState) {
-    if (state.type === State.INITIALIZE) {
-      const obj = new ClientSocks5SpeedUpLayer();
-      this._context.attachObjectToDownStream(obj);
-    } else if (state.type === State.INITIALIZE_OK) {
+    if (state.type === State.INITIALIZE_COMPLETED) {
       this._socket.setTimeout(60 * 1000);
       this._socket.on("data", (data: Buffer) => {
         // this._socket.pause();
@@ -179,6 +174,14 @@ export class ClientSocks5Layer extends BaseTransportObject implements TransportO
         this._socket.end();
       });
       this._socket.resume();
+    }
+    return await super.dispatchStateToDownStream(state);
+  }
+
+  public async fetchStateFromDownStream(state: TransportState) {
+    if (state.type === State.INITIALIZE) {
+      const obj = new ClientSocks5SpeedUpLayer();
+      this._context.attachObjectToDownStream(obj);
     } else if (state.type === State.END) {
       this._socket.end();
     } else if (state.type === State.DESTROY) {

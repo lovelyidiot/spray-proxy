@@ -31,13 +31,13 @@ export class ServerSocks5SpeedUpLayer extends BaseTransportObject implements Tra
   }
 
   public async fetchStateFromUpStream(state: TransportState) {
+    if (state.type === State.INITIALIZE_COMPLETED) {
+      await super.dispatchDataToUpStream(Buffer.alloc(3, "\x05\x00\x00"));
+    }
     return await super.dispatchStateToDownStream(state);
   }
 
   public async fetchStateFromDownStream(state: TransportState) {
-    if (state.type === State.INITIALIZE_OK) {
-      await super.dispatchDataToUpStream(Buffer.alloc(3, "\x05\x00\x00"));
-    }
     return await super.dispatchStateToUpStream(state);
   }
 }

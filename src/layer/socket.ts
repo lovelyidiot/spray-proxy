@@ -26,7 +26,7 @@ export class RawSocketLayer extends BaseTransportObject implements TransportObje
   }
 
   public async fetchStateFromDownStream(state: TransportState) {
-    if (state.type === State.INITIALIZE_OK) {
+    if (state.type === State.INITIALIZE) {
       this._socket.on("data", (data: Buffer) => {
         this.fetchDataFromDownStream(data);
       });
