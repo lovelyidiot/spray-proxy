@@ -57,7 +57,33 @@ export class ServerTunnelLayer extends BaseTransportObject implements TransportO
       this._object.set(index, indexer);
       const newObject = new this._ctor();
 
-      const init = createTransportSession({ low: this, block: this._context.getTransportEnvBlock() }, indexer, newObject);
+      const block: TransportEnvBlock = {
+        param: this._context.getTransportEnvBlock().param,
+        control: {
+        },
+
+        flow: {
+          read: 0,
+          written: 0
+        },
+
+        pid: process.pid,
+        state: "connected",
+        src: {
+          host: undefined!,
+          port: undefined!
+        },
+        dst: {
+          host: undefined!,
+          port: undefined!
+        },
+        time: {
+          start: (new Date()).getTime(),
+          end: undefined!
+        },
+      };
+
+      const init = createTransportSession({ low: this, block }, indexer, newObject);
       await init.dispatchStateToUpStream({ type: State.INITIALIZE });
       return await indexer.fetchDataFromDownStream(data);
     }

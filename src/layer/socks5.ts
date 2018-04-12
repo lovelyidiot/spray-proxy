@@ -75,7 +75,14 @@ export class ServerSocks5Layer extends BaseTransportObject implements TransportO
       }
       console.log("server => connecting to %s,%d", host.address, host.port);
       const client = createConnection(host.port, host.address, () => {
-        console.log("server => connected with %s,%d", host.address, host.port);
+        const block = this._context.getTransportEnvBlock();
+        block.src.host = client.localAddress;
+        block.src.port = client.localPort;
+
+        block.dst.host = host.address;
+        block.dst.port = host.port;
+
+        console.log("server => connected with %s,%d", block.dst.host, block.dst.port);
         this.fetchDataFromUpStream(host.reply);
         client.removeAllListeners("error");
 
@@ -88,7 +95,7 @@ export class ServerSocks5Layer extends BaseTransportObject implements TransportO
         });
 
         client.on("close", he => {
-          console.log("server => closed %s,%d %d <-> %d", host.address, host.port, client.bytesRead, client.bytesWritten);
+          console.log("server => closed %s,%d %d <-> %d", block.dst.host, block.dst.port, block.flow.read, block.flow.written);
           if (!he) super.dispatchStateToDownStream({ type: State.CLOSE });
         });
 
