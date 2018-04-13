@@ -95,7 +95,6 @@ const createClientSessionFactory = (clientMaxConnection: number) => {
             }
             return;
           }
-          throw new Error("not impl");
         }
 
         sc.on("error", (err) => {

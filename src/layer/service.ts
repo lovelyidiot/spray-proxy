@@ -126,7 +126,15 @@ export class ServerServiceLayer extends BaseTransportObject implements Transport
 
     const back: ServicePacket = {} as any;
 
-    const [packet, length] = convertBufferToServicePacket(data);
+    const [packet, length] = (() => {
+      try {
+        return convertBufferToServicePacket(data);
+      } catch (e) {
+        super.dispatchStateToDownStream({ type: State.ERROR, value: new Error("packet conflict") });
+      }
+    })() as [ServicePacket, number];
+    if (packet === undefined) return;
+
     back.version = packet.version;
     back.user = packet.user;
     {
@@ -223,7 +231,15 @@ export class ClientServiceLayer extends BaseTransportObject implements Transport
       return await super.dispatchDataToDownStream(data);
     };
 
-    const [packet, length] = convertBufferToServicePacket(data);
+    const [packet, length] = (() => {
+      try {
+        return convertBufferToServicePacket(data);
+      } catch (e) {
+        super.dispatchStateToDownStream({ type: State.ERROR, value: new Error("packet conflict") });
+      }
+      return [undefined, 0];
+    })() as [ServicePacket, number];
+    if (packet === undefined) return;
 
     {
       const now = (new Date()).getTime();
